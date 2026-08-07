@@ -2,7 +2,25 @@
 
 Cambia el ícono de una app Android (.apk) usando GitHub Actions: decompila, reemplaza el ícono en todas las densidades, recompila, alinea y firma el APK para que quede 100% funcional e instalable.
 
+## Cómo crear el repo (tú lo haces, yo no tengo acceso a tu GitHub)
 
+1. Entra a github.com → **New repository** → nómbralo (ej. `apk-icon-changer`) → **Create**.
+2. Sube estos archivos manteniendo la misma estructura de carpetas (arrastra la carpeta o usa `git push`):
+   ```
+   .github/workflows/change-icon.yml
+   scripts/replace_icon.sh
+   input/  (aquí subes tu APK y tu ícono)
+   README.md
+   ```
+3. Si prefieres línea de comandos:
+   ```
+   cd apk-icon-changer
+   git init
+   git add .
+   git commit -m "Setup"
+   git remote add origin https://github.com/TU_USUARIO/TU_REPO.git
+   git push -u origin main
+   ```
 
 ## Cómo usarlo cada vez
 
@@ -27,4 +45,20 @@ Cambia el ícono de una app Android (.apk) usando GitHub Actions: decompila, ree
 scripts/replace_icon.sh             # genera los tamaños e inyecta el ícono
 input/                              # aquí van tu APK y tu ícono
 keystore/                           # opcional: tu propia keystore
+tools/convertir_a_icon.bat          # herramienta opcional (ver abajo)
 ```
+
+## Herramienta opcional: preparar el ícono en Windows (arrastrar y soltar)
+
+`tools/convertir_a_icon.bat` convierte cualquier imagen a PNG **1024x1024 con fondo transparente**, listo para usar como `input/icon.png` en el workflow.
+
+**Cómo usarlo:**
+1. Descarga/copia el archivo `tools/convertir_a_icon.bat` a tu PC (Windows).
+2. Arrastra tu imagen (jpg, png, etc.) y suéltala **encima del archivo `.bat`**.
+3. Si no tienes **ImageMagick** instalado, el script lo detecta y lo instala solo (usando `winget`) y luego continúa automáticamente.
+4. Se genera `icon.png` en la misma carpeta de la imagen original.
+5. La ventana se cierra sola al terminar.
+
+Puedes soltar varias imágenes a la vez; cada una generará su propio `icon.png` en su carpeta correspondiente (si hay más de una imagen en la misma carpeta, la última procesada sobreescribe el `icon.png`).
+
+Requisitos: Windows 10/11 con `winget` disponible (viene incluido por defecto). Si tu equipo no tiene `winget`, el script te avisa y te da el link de descarga manual de ImageMagick.
