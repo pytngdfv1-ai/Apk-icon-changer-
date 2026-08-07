@@ -1,0 +1,80 @@
+name: Cambiar ícono del APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_path:
+        description: "Ruta del APK dentro del repo"
+        required: true
+        default: "input/app.apk"
+      icon_path:
+        description: "Ruta del ícono nuevo (PNG cuadrado, ideal 1024x1024)"
+        required: true
+        default: "input/icon.png"
+
+jobs:
+  change-icon:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Instalar Android SDK (build-tools + zipalign + apksigner)
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar apktool e ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick unzip wget
+          wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool -O /usr/local/bin/apktool
+          wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar -O /usr/local/bin/apktool.jar
+          chmod +x /usr/local/bin/apktool
+
+      - name: Decompilar APK
+        run: apktool d -f "${{ inputs.apk_path }}" -o decoded
+
+      - name: Generar íconos en todas las densidades y reemplazarlos
+        run: |
+          bash scripts/replace_icon.sh "${{ inputs.icon_path }}" decoded
+
+      - name: Recompilar APK
+        run: apktool b decoded -o app-unsigned.apk
+
+      - name: Zipalign
+        run: |
+          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
+          $ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign -v -p 4 app-unsigned.apk app-aligned.apk
+
+      - name: Crear keystore de firma (si no existe uno propio en el repo)
+        run: |
+          if [ ! -f keystore/release.jks ]; then
+            mkdir -p keystore
+            keytool -genkeypair -v -keystore keystore/release.jks \
+              -alias iconchanger -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass changeit -keypass changeit \
+              -dname "CN=IconChanger, OU=IconChanger, O=IconChanger, L=NA, S=NA, C=US"
+          fi
+
+      - name: Firmar APK
+        run: |
+          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
+          $ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner sign \
+            --ks keystore/release.jks --ks-pass pass:changeit \
+            --out app-final-signed.apk app-aligned.apk
+
+      - name: Verificar firma
+        run: |
+          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
+          $ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner verify --verbose app-final-signed.apk
+
+      - name: Subir APK resultante
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-con-nuevo-icono
+          path: app-final-signed.apk
