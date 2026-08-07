@@ -2,26 +2,6 @@
 
 Cambia el ícono de una app Android (.apk) usando GitHub Actions: decompila, reemplaza el ícono en todas las densidades, recompila, alinea y firma el APK para que quede 100% funcional e instalable.
 
-## Cómo crear el repo (tú lo haces, yo no tengo acceso a tu GitHub)
-
-1. Entra a github.com → **New repository** → nómbralo (ej. `apk-icon-changer`) → **Create**.
-2. Sube estos archivos manteniendo la misma estructura de carpetas (arrastra la carpeta o usa `git push`):
-   ```
-   .github/workflows/change-icon.yml
-   scripts/replace_icon.sh
-   input/  (aquí subes tu APK y tu ícono)
-   README.md
-   ```
-3. Si prefieres línea de comandos:
-   ```
-   cd apk-icon-changer
-   git init
-   git add .
-   git commit -m "Setup"
-   git remote add origin https://github.com/TU_USUARIO/TU_REPO.git
-   git push -u origin main
-   ```
-
 ## Cómo usarlo cada vez
 
 1. Sube tu APK a `input/app.apk` y tu ícono nuevo (PNG cuadrado, idealmente 1024x1024, fondo transparente si quieres adaptive icon) a `input/icon.png`.
