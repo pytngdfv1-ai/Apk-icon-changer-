@@ -40,10 +40,15 @@ jobs:
       - name: Instalar Android SDK (build-tools + zipalign + apksigner)
         uses: android-actions/setup-android@v3
 
-      - name: Instalar apktool e ImageMagick
+      - name: Instalar apktool (última versión) e ImageMagick
         run: |
           sudo apt-get update
-          sudo apt-get install -y imagemagick unzip apktool
+          sudo apt-get install -y imagemagick unzip
+          JAR_URL=$(curl -s https://api.github.com/repos/iBotPeaches/Apktool/releases/latest | jq -r '.assets[] | select(.name | endswith(".jar")) | .browser_download_url')
+          echo "Descargando: $JAR_URL"
+          sudo curl -sL "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool" -o /usr/local/bin/apktool
+          sudo curl -sL "$JAR_URL" -o /usr/local/bin/apktool.jar
+          sudo chmod +x /usr/local/bin/apktool
           apktool --version
 
       - name: Detectar aapt2 del SDK de Android
