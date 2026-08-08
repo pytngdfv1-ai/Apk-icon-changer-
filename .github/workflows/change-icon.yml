@@ -19,6 +19,18 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Verificar que el APK subido es válido
+        run: |
+          if [ ! -f "${{ inputs.apk_path }}" ]; then
+            echo "::error::No se encontró el archivo en '${{ inputs.apk_path }}'. Revisa la ruta."
+            exit 1
+          fi
+          if ! unzip -tq "${{ inputs.apk_path }}" > /dev/null 2>&1; then
+            echo "::error::El archivo '${{ inputs.apk_path }}' no es un ZIP/APK válido (está corrupto o no se subió correctamente). Verifica que abra como .zip en tu PC y vuelve a subirlo con git add/commit/push (no con el uploader web), revisando que no tengas core.autocrlf activado."
+            exit 1
+          fi
+          echo "APK válido."
+
       - name: Instalar Java
         uses: actions/setup-java@v4
         with:
