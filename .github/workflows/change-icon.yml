@@ -46,19 +46,24 @@ jobs:
           sudo apt-get install -y imagemagick unzip apktool
           apktool --version
 
+      - name: Detectar aapt2 del SDK de Android
+        run: |
+          BUILD_TOOLS=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+          echo "BUILD_TOOLS=$BUILD_TOOLS" >> "$GITHUB_ENV"
+          echo "AAPT2_PATH=$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt2" >> "$GITHUB_ENV"
+
       - name: Decompilar APK
-        run: apktool d -f "${{ inputs.apk_path }}" -o decoded
+        run: apktool d -f --use-aapt2 --aapt "$AAPT2_PATH" "${{ inputs.apk_path }}" -o decoded
 
       - name: Generar íconos en todas las densidades y reemplazarlos
         run: |
           bash scripts/replace_icon.sh "${{ inputs.icon_path }}" decoded
 
       - name: Recompilar APK
-        run: apktool b decoded -o app-unsigned.apk
+        run: apktool b --use-aapt2 --aapt "$AAPT2_PATH" decoded -o app-unsigned.apk
 
       - name: Zipalign
         run: |
-          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
           $ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign -v -p 4 app-unsigned.apk app-aligned.apk
 
       - name: Crear keystore de firma (si no existe uno propio en el repo)
@@ -73,14 +78,12 @@ jobs:
 
       - name: Firmar APK
         run: |
-          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
           $ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner sign \
             --ks keystore/release.jks --ks-pass pass:changeit \
             --out app-final-signed.apk app-aligned.apk
 
       - name: Verificar firma
         run: |
-          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)
           $ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner verify --verbose app-final-signed.apk
 
       - name: Subir APK resultante
