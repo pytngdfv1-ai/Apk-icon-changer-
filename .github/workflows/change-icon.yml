@@ -58,14 +58,14 @@ jobs:
           echo "AAPT2_PATH=$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt2" >> "$GITHUB_ENV"
 
       - name: Decompilar APK
-        run: apktool d -f --use-aapt2 --aapt "$AAPT2_PATH" "${{ inputs.apk_path }}" -o decoded
+        run: apktool d -f "${{ inputs.apk_path }}" -o decoded
 
       - name: Generar íconos en todas las densidades y reemplazarlos
         run: |
           bash scripts/replace_icon.sh "${{ inputs.icon_path }}" decoded
 
       - name: Recompilar APK
-        run: apktool b --use-aapt2 --aapt "$AAPT2_PATH" decoded -o app-unsigned.apk
+        run: apktool b decoded -o app-unsigned.apk
 
       - name: Zipalign
         run: |
