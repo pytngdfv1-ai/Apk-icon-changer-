@@ -32,32 +32,43 @@ for density in "${!SIZES[@]}"; do
   size=${SIZES[$density]}
   fgsize=${FG_SIZES[$density]}
   dir="$DECODED/res/$density"
+  mkdir -p "$dir"
 
-  # Genera versión cuadrada normal y redonda (mismo PNG, Android la recorta con la máscara del dispositivo)
-  convert "$ICON" -resize "${size}x${size}" "$TMP/ic_launcher_${density}.png"
+  # --- Icono clasico (Android < 8, y fallback general) ---
+  convert "$ICON" -resize "${size}x${size}" -background none -gravity center \
+    -extent "${size}x${size}" "$dir/ic_launcher.png"
+  convert "$ICON" -resize "${size}x${size}" -background none -gravity center \
+    -extent "${size}x${size}" "$dir/ic_launcher_round.png"
+  echo "Escrito: $dir/ic_launcher.png / ic_launcher_round.png"
 
-  if [ -d "$dir" ]; then
-    for f in ic_launcher.png ic_launcher_round.png; do
-      if [ -f "$dir/$f" ]; then
-        cp "$TMP/ic_launcher_${density}.png" "$dir/$f"
-        echo "Reemplazado: $dir/$f"
-      fi
-    done
-
-    # Adaptive icon: capa de foreground (si existe)
-    if [ -f "$dir/ic_launcher_foreground.png" ]; then
-      convert "$ICON" -resize "${fgsize}x${fgsize}" -background none -gravity center \
-        -extent "${fgsize}x${fgsize}" "$dir/ic_launcher_foreground.png"
-      echo "Reemplazado (foreground adaptive): $dir/ic_launcher_foreground.png"
-    fi
-  fi
+  # --- Capa "foreground" del icono adaptativo (Android 8+) ---
+  # Se reduce al ~66% del lienzo (zona segura) para que no se recorte con la mascara del launcher.
+  fg_inner=$(( fgsize * 66 / 100 ))
+  convert "$ICON" -resize "${fg_inner}x${fg_inner}" -background none -gravity center \
+    -extent "${fgsize}x${fgsize}" "$dir/ic_launcher_foreground.png"
+  echo "Escrito (foreground adaptive): $dir/ic_launcher_foreground.png"
 done
 
-# Si el ícono adaptativo usa capas vectoriales XML (ic_launcher_foreground.xml),
-# no se puede reemplazar con un PNG automáticamente: se avisa para revisión manual.
-if find "$DECODED/res" -iname "ic_launcher_foreground.xml" | grep -q .; then
-  echo "AVISO: se detectó un ic_launcher_foreground.xml (vector). Revisa manualmente esa capa; el reemplazo automático solo cubre PNG."
+# --- Reescribe la definicion del icono adaptativo para que apunte a nuestro PNG ---
+# en vez del vector original (drawable/ic_launcher_foreground.xml), que es lo que
+# realmente decide que se ve en Android 8+.
+ADAPTIVE_XML='<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/white"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
+'
+
+FOUND_ADAPTIVE=0
+while IFS= read -r xmlfile; do
+  FOUND_ADAPTIVE=1
+  echo "$ADAPTIVE_XML" > "$xmlfile"
+  echo "Reescrito icono adaptativo: $xmlfile"
+done < <(find "$DECODED/res" -type f \( -iname "ic_launcher.xml" -o -iname "ic_launcher_round.xml" \) -path "*anydpi*")
+
+if [ "$FOUND_ADAPTIVE" -eq 0 ]; then
+  echo "No se encontro definicion de icono adaptativo (mipmap-anydpi*/ic_launcher.xml); la app probablemente solo usa los PNG clasicos, ya reemplazados arriba."
 fi
 
 rm -rf "$TMP"
-echo "Reemplazo de ícono completado."
+echo "Reemplazo de icono completado."
